@@ -1,0 +1,13 @@
+torch>=2.0.0
+jax[cpu]
+numpy
+pandas
+scipy
+scikit-learn
+matplotlib
+gymnasium
+pyyaml
+tensorboard
+grpcio
+protobuf
+pickle5
