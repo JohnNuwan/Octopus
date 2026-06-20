@@ -107,11 +107,30 @@ services:
     environment:
       - ORCHESTRATOR_WS=ws://orchestrator:8080/ws
 
+  # ─── Investissement Long Terme (Python) ───────────────
+  invest:
+    <<: *defaults
+    build:
+      context: ./invest
+      dockerfile: Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - ORCHESTRATOR_HOST=orchestrator
+      - ORCHESTRATOR_PORT=9091
+      - TR_PHONE=${TR_PHONE:-}
+      - TR_PIN=${TR_PIN:-}
+      - INVEST_STRATEGY=${INVEST_STRATEGY:-core_satellite}
+      - MONTHLY_BUDGET=${MONTHLY_BUDGET:-300}
+    volumes:
+      - invest_data:/data
+
 volumes:
   orchestrator_data:
   engine_weights:
   engine_results:
   quant_data:
+  invest_data:
 
 networks:
   octopus-net:
