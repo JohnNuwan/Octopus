@@ -1,0 +1,118 @@
+# Octopus — Architecture Multi-Agent pour le Trading Algorithmique
+#
+# Services :
+#   orchestrator  : Cerveau central Go (gRPC, routage, monitoring)
+#   engine        : Moteur MuZero Python (RL, entraînement, inférence)
+#   quant         : Moteur quantitatif Julia (risque, Kelly, optimisation)
+#   execution     : Moteur d'exécution Rust (ordres MT5, latence critique)
+#   web           : Dashboard monitoring (TypeScript/React)
+#
+# Réseau : bridge « octopus-net » — communication interne via gRPC
+
+version: "3.9"
+
+x-defaults: &defaults
+  restart: unless-stopped
+  networks:
+    - octopus-net
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "3"
+
+services:
+  # ─── Orchestrateur Central (Go) ──────────────────────────
+  orchestrator:
+    <<: *defaults
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "9091:9091"    # gRPC
+      - "8080:8080"    # Health / Metrics HTTP
+    environment:
+      - GRPC_PORT=9091
+      - HTTP_PORT=8080
+      - LOG_LEVEL=info
+    volumes:
+      - orchestrator_data:/data
+
+  # ─── Moteur MuZero RL (Python + JAX) ────────────────────
+  engine:
+    <<: *defaults
+    build:
+      context: ./engine
+      dockerfile: Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - ORCHESTRATOR_HOST=orchestrator
+      - ORCHESTRATOR_PORT=9091
+      - JAX_PLATFORM_NAME=gpu
+      - XLA_PYTHON_CLIENT_MEM_FRACTION=0.85
+      - TRAINING_STEPS=30000
+      - REPLAY_BUFFER_SIZE=100000
+    volumes:
+      - engine_weights:/app/weights
+      - engine_results:/app/results
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - capabilities: [gpu]
+
+  # ─── Moteur Quantitatif (Julia) ─────────────────────────
+  quant:
+    <<: *defaults
+    build:
+      context: ./quant
+      dockerfile: Dockerfile
+    depends_on:
+      - orchestrator
+    environment:
+      - ORCHESTRATOR_HOST=orchestrator
+      - ORCHESTRATOR_PORT=9091
+      - JULIA_NUM_THREADS=32
+    volumes:
+      - quant_data:/data
+
+  # ─── Moteur d'Exécution (Rust) ──────────────────────────
+  execution:
+    <<: *defaults
+    build:
+      context: ./execution
+      dockerfile: Dockerfile
+    depends_on:
+      - orchestrator
+    cap_add:
+      - NET_ADMIN    # Latence réseau optimisée
+    environment:
+      - ORCHESTRATOR_HOST=orchestrator
+      - ORCHESTRATOR_PORT=9091
+      - MT5_LOGIN=${MT5_LOGIN:-}
+      - MT5_PASSWORD=${MT5_PASSWORD:-}
+      - MT5_SERVER=${MT5_SERVER:-}
+
+  # ─── Dashboard Web (TypeScript) ─────────────────────────
+  web:
+    <<: *defaults
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - orchestrator
+    environment:
+      - ORCHESTRATOR_WS=ws://orchestrator:8080/ws
+
+volumes:
+  orchestrator_data:
+  engine_weights:
+  engine_results:
+  quant_data:
+
+networks:
+  octopus-net:
+    driver: bridge
