@@ -31,5 +31,9 @@ wandb/
 mlruns/
 orchestrator/orchestrator
 *.local
+# Web
+node_modules/
+web/dist/
+*.tsbuildinfo
 *.secret
 *.key
