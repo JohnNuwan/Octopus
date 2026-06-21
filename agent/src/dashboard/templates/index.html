@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Octopus Agent Manager</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-card: #1a1f2e;
+            --bg-card-hover: #222840;
+            --text-primary: #e8eaed;
+            --text-secondary: #9aa0a6;
+            --accent-green: #34d399;
+            --accent-red: #f87171;
+            --accent-yellow: #fbbf24;
+            --accent-blue: #60a5fa;
+            --accent-purple: #a78bfa;
+            --border: #2a2f3e;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .container { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+        /* Header */
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 20px 0; border-bottom: 1px solid var(--border); margin-bottom: 30px;
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .logo { font-size: 28px; font-weight: 700; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: var(--text-secondary); font-size: 14px; }
+        .status-badge {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 500;
+        }
+        .status-badge.online { background: rgba(52, 211, 153, 0.15); color: var(--accent-green); }
+        .status-badge.offline { background: rgba(248, 113, 113, 0.15); color: var(--accent-red); }
+
+        /* Stats row */
+        .stats-row {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px; margin-bottom: 30px;
+        }
+        .stat-card {
+            background: var(--bg-card); border-radius: 12px; padding: 20px;
+            border: 1px solid var(--border); transition: transform 0.2s;
+        }
+        .stat-card:hover { transform: translateY(-2px); }
+        .stat-label { font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat-value { font-size: 28px; font-weight: 700; margin-top: 8px; }
+        .stat-value.green { color: var(--accent-green); }
+        .stat-value.red { color: var(--accent-red); }
+        .stat-value.blue { color: var(--accent-blue); }
+
+        /* Agent Grid */
+        .agent-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 16px; margin-bottom: 30px;
+        }
+        .agent-card {
+            background: var(--bg-card); border-radius: 12px; padding: 24px;
+            border: 1px solid var(--border); position: relative; overflow: hidden;
+            transition: all 0.3s ease; cursor: pointer;
+        }
+        .agent-card:hover {
+            background: var(--bg-card-hover); transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+        .agent-card .accent-bar {
+            position: absolute; top: 0; left: 0; width: 4px; height: 100%;
+        }
+        .agent-card .accent-bar.green { background: var(--accent-green); }
+        .agent-card .accent-bar.red { background: var(--accent-red); }
+        .agent-card .accent-bar.blue { background: var(--accent-blue); }
+        .agent-card .accent-bar.yellow { background: var(--accent-yellow); }
+        .agent-card .accent-bar.purple { background: var(--accent-purple); }
+
+        .agent-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+        .agent-name { font-size: 18px; font-weight: 600; }
+        .agent-status {
+            font-size: 12px; padding: 3px 10px; border-radius: 12px; font-weight: 500;
+        }
+        .agent-status.success { background: rgba(52, 211, 153, 0.15); color: var(--accent-green); }
+        .agent-status.failed { background: rgba(248, 113, 113, 0.15); color: var(--accent-red); }
+        .agent-status.pending { background: rgba(96, 165, 250, 0.15); color: var(--accent-blue); }
+
+        .agent-description { font-size: 13px; color: var(--text-secondary); margin-bottom: 16px; }
+        .agent-metrics { display: flex; flex-wrap: wrap; gap: 12px; }
+        .metric { font-size: 12px; }
+        .metric-label { color: var(--text-secondary); }
+        .metric-value { font-weight: 500; color: var(--text-primary); }
+
+        .agent-actions { margin-top: 16px; display: flex; gap: 8px; }
+        .btn {
+            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border);
+            font-size: 13px; cursor: pointer; transition: all 0.2s; font-weight: 500;
+        }
+        .btn-primary {
+            background: var(--accent-blue); color: #fff; border: none;
+        }
+        .btn-primary:hover { background: #4b8bef; }
+        .btn-secondary {
+            background: transparent; color: var(--text-primary);
+        }
+        .btn-secondary:hover { background: var(--bg-card-hover); }
+
+        /* Timeline */
+        .section-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; display: flex; align-items: center; gap: 10px; }
+        .timeline {
+            background: var(--bg-card); border-radius: 12px; padding: 24px;
+            border: 1px solid var(--border); margin-bottom: 30px;
+        }
+        .timeline-item {
+            display: flex; gap: 16px; padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+        .timeline-item:last-child { border-bottom: none; }
+        .timeline-dot {
+            width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; flex-shrink: 0;
+        }
+        .timeline-dot.success { background: var(--accent-green); }
+        .timeline-dot.failed { background: var(--accent-red); }
+        .timeline-content { flex: 1; }
+        .timeline-title { font-size: 14px; font-weight: 500; }
+        .timeline-meta { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+        /* Detail Report */
+        .detail-report {
+            background: var(--bg-card); border-radius: 12px; padding: 24px;
+            border: 1px solid var(--border); margin-bottom: 30px;
+        }
+        .detail-report pre {
+            font-family: 'Fira Code', 'Consolas', monospace; font-size: 13px;
+            color: var(--text-secondary); white-space: pre-wrap; line-height: 1.5;
+        }
+
+        /* Loading */
+        .loading { text-align: center; padding: 40px; color: var(--text-secondary); }
+        .spinner {
+            width: 32px; height: 32px; border: 3px solid var(--border);
+            border-top-color: var(--accent-blue); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header { flex-direction: column; align-items: flex-start; gap: 12px; }
+            .agent-grid { grid-template-columns: 1fr; }
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container" id="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <div class="logo">Octopus</div>
+                <div>
+                    <div style="font-size:16px;font-weight:500;">Agent Manager</div>
+                    <div class="subtitle">Orchestrateur central des agents</div>
+                </div>
+            </div>
+            <div>
+                <span class="status-badge online" id="globalStatus">
+                    <span>●</span> Online
+                </span>
+            </div>
+        </header>
+
+        <!-- Stats -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-card">
+                <div class="stat-label">Agents</div>
+                <div class="stat-value blue" id="totalAgents">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Exécutions</div>
+                <div class="stat-value" id="totalRuns">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Succès</div>
+                <div class="stat-value green" id="successRate">—</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Dernière exécution</div>
+                <div class="stat-value" style="font-size:14px;" id="lastRun">—</div>
+            </div>
+        </div>
+
+        <!-- Agent Grid -->
+        <div class="section-title">
+            <span>🤖 Agents</span>
+            <button class="btn btn-primary" id="refreshBtn" onclick="refreshAll()">Rafraîchir</button>
+        </div>
+        <div class="agent-grid" id="agentGrid">
+            <div class="loading"><div class="spinner"></div>Chargement des agents...</div>
+        </div>
+
+        <!-- Timeline -->
+        <div class="section-title">📜 Historique des exécutions</div>
+        <div class="timeline" id="timeline">
+            <div class="loading"><div class="spinner"></div>Chargement de l'historique...</div>
+        </div>
+
+        <!-- Detail Report -->
+        <div class="section-title">📋 Dernier rapport</div>
+        <div class="detail-report" id="detailReport">
+            <pre>Sélectionnez un agent pour voir son rapport détaillé.</pre>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+
+        // Configuration des agents
+        const AGENT_CONFIG = {
+            training: { name: 'Entraînement RL', desc: 'Entraînement du modèle RL sur GPU', bar: 'blue', icon: '🧠' },
+            research: { name: 'Recherche', desc: 'Analyse des papiers arXiv récents', bar: 'purple', icon: '🔬' },
+            macro: { name: 'Macro-économie', desc: 'Analyse des indicateurs macro', bar: 'green', icon: '📊' },
+            trading: { name: 'Trading Live', desc: 'Surveillance des positions ouvertes', bar: 'yellow', icon: '💹' },
+            strategy: { name: 'Backtest', desc: 'Optimisation et backtest de stratégies', bar: 'red', icon: '📈' },
+        };
+
+        async function api(path, options = {}) {
+            const resp = await fetch(`${API_BASE}${path}`, options);
+            if (!resp.ok) throw new Error(`API error: ${resp.status}`);
+            return resp.json();
+        }
+
+        function formatTime(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            return d.toLocaleString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        }
+
+        async function refreshStats() {
+            const status = await api('/agents');
+            document.getElementById('totalAgents').textContent = status.agents?.length || 0;
+            document.getElementById('totalRuns').textContent = status.total_runs || 0;
+
+            const success = status.recent_results?.filter(r => r.status === 'success').length || 0;
+            const total = status.recent_results?.length || 1;
+            document.getElementById('successRate').textContent = `${Math.round(success / total * 100)}%`;
+
+            document.getElementById('lastRun').textContent = status.last_run
+                ? formatTime(status.last_run.started_at)
+                : 'Aucune';
+        }
+
+        async function refreshAgents() {
+            const grid = document.getElementById('agentGrid');
+            grid.innerHTML = '<div class="loading"><div class="spinner"></div>Chargement des agents...</div>';
+
+            const status = await api('/agents');
+            const agents = status.agents || [];
+
+            if (agents.length === 0) {
+                grid.innerHTML = '<div class="loading">Aucun agent enregistré</div>';
+                return;
+            }
+
+            let html = '';
+            for (const name of agents) {
+                const cfg = AGENT_CONFIG[name] || { name, desc: '', bar: 'blue', icon: '🤖' };
+                let report = null;
+                try { report = await api(`/agents/${name}`); } catch (e) { /* ignore */ }
+
+                const statusClass = report?.status || 'pending';
+                const metrics = report?.metrics || {};
+                const metricEntries = Object.entries(metrics).slice(0, 3);
+
+                html += `
+                    <div class="agent-card" onclick="showDetail('${name}')">
+                        <div class="accent-bar ${cfg.bar}"></div>
+                        <div class="agent-header">
+                            <div class="agent-name">${cfg.icon} ${cfg.name}</div>
+                            <span class="agent-status ${statusClass}">${statusClass}</span>
+                        </div>
+                        <div class="agent-description">${cfg.desc}</div>
+                        <div class="agent-metrics">
+                            ${metricEntries.map(([k, v]) =>
+                                `<div class="metric"><span class="metric-label">${k}:</span> <span class="metric-value">${typeof v === 'number' ? v.toFixed(2) : v}</span></div>`
+                            ).join('')}
+                            ${metricEntries.length === 0 ? '<span class="metric-label">Aucune métrique</span>' : ''}
+                        </div>
+                        <div class="agent-actions">
+                            <button class="btn btn-primary" onclick="event.stopPropagation(); runAgent('${name}')">▶ Exécuter</button>
+                            <button class="btn btn-secondary" onclick="event.stopPropagation(); showDetail('${name}')">Détail</button>
+                        </div>
+                    </div>
+                `;
+            }
+            grid.innerHTML = html;
+        }
+
+        async function refreshTimeline() {
+            const timeline = document.getElementById('timeline');
+            try {
+                const history = await api('/history?limit=10');
+                if (history.length === 0) {
+                    timeline.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text-secondary);">Aucune exécution récente</div>';
+                    return;
+                }
+                timeline.innerHTML = history.map(item => `
+                    <div class="timeline-item">
+                        <div class="timeline-dot ${item.status}"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-title">${item.agent_name} — ${item.status}</div>
+                            <div class="timeline-meta">${formatTime(item.started_at)} ${item.completed_at ? '→ ' + formatTime(item.completed_at) : ''}</div>
+                            <div class="timeline-meta">${item.summary?.substring(0, 100) || ''}</div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) {
+                timeline.innerHTML = '<div class="loading">Erreur de chargement</div>';
+            }
+        }
+
+        async function showDetail(name) {
+            const reportDiv = document.getElementById('detailReport');
+            try {
+                const report = await api(`/agents/${name}`);
+                const cfg = AGENT_CONFIG[name] || { name, icon: '🤖' };
+                const json = JSON.stringify(report, null, 2);
+                reportDiv.innerHTML = `<pre>${cfg.icon} ${cfg.name}\n${'─'.repeat(40)}\n${json}</pre>`;
+            } catch (e) {
+                reportDiv.innerHTML = `<pre>Erreur: ${e.message}</pre>`;
+            }
+        }
+
+        async function runAgent(name) {
+            const btn = event?.target;
+            if (btn) { btn.textContent = '⏳ Running...'; btn.disabled = true; }
+
+            try {
+                const result = await api(`/agents/${name}/run`, { method: 'POST' });
+                await refreshAll();
+                showDetail(name);
+            } catch (e) {
+                alert(`Erreur: ${e.message}`);
+            }
+
+            if (btn) { btn.textContent = '▶ Exécuter'; btn.disabled = false; }
+        }
+
+        async function refreshAll() {
+            await Promise.all([refreshStats(), refreshAgents(), refreshTimeline()]);
+        }
+
+        // Auto-refresh toutes les 30s
+        document.addEventListener('DOMContentLoaded', () => {
+            refreshAll();
+            setInterval(refreshAll, 30000);
+        });
+    </script>
+</body>
+</html>
