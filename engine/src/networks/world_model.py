@@ -83,6 +83,7 @@ class RSSMTransition(nn.Module):
         self.stoch_classes = stoch_classes
         self.deter_size = deter_size
         self.hidden_dim = hidden_dim
+        self.embedding_dim = embedding_dim
         
         # Cellule GRU pour la récurrence déterministe
         self.gru = nn.GRUCell(
@@ -142,7 +143,13 @@ class RSSMTransition(nn.Module):
         dist = torch.distributions.OneHotCategorical(logits=logits)
         
         # Échantillonnage avec straight-through gradients
-        sample = dist.rsample()  # one_hot + gradient straight-through
+        # Note: rsample() n'est pas supporté par OneHotCategorical
+        # On utilise sample() avec le straight-through estimator manuel
+        sample = dist.sample()  # one_hot
+        # Straight-through : gradient = gradient de l'argmax
+        # En utilisant le sample + (logits - logits.detach()) pour le gradient
+        sample_soft = F.softmax(logits, dim=-1)
+        sample = sample + (sample_soft - sample_soft.detach())
         
         return sample, dist
     
@@ -179,7 +186,17 @@ class RSSMTransition(nn.Module):
                 prev_embedding
             ], dim=-1)
         else:
-            x = torch.cat([prev_stoch_flat, prev_action], dim=-1)
+            # Utiliser un embedding nul de la bonne dimension
+            batch_size = prev_stoch.shape[0]
+            dummy_embedding = torch.zeros(
+                batch_size, self.embedding_dim,
+                device=prev_stoch.device
+            )
+            x = torch.cat([
+                prev_stoch_flat,
+                prev_action,
+                dummy_embedding
+            ], dim=-1)
         
         x = self.input_projection(x)
         
@@ -301,7 +318,75 @@ class RSSMWorldModel(nn.Module):
             stoch.reshape(stoch.shape[0], -1), deter
         ], dim=-1)
         return torch.sigmoid(self.continue_head(x))
-    
+
+    def initial_inference(
+        self, state: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Inférence initiale MuZero : état → hidden, policy_logits, value.
+
+        Args:
+            state: État latent (batch, stoch*classes + deter).
+
+        Returns:
+            Tuple (hidden_state, policy_logits, value).
+        """
+        batch = state.shape[0]
+        # L'état latent sert directement de hidden state pour MCTS
+        hidden = state
+        # Policy logits uniformes (seront raffinés par l'actor-critic)
+        policy_logits = torch.zeros(
+            batch, 5, device=state.device
+        )
+        # Valeur initiale nulle
+        value = torch.zeros(batch, 1, device=state.device)
+        return hidden, policy_logits, value
+
+    def recurrent_inference(
+        self,
+        hidden_state: torch.Tensor,
+        action: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Inférence récurrente MuZero : hidden + action → next, reward, policy, value.
+
+        Args:
+            hidden_state: État caché (batch, stoch*classes + deter).
+            action: Action one-hot (batch, action_dim).
+
+        Returns:
+            Tuple (next_hidden, reward, policy_logits, value).
+        """
+        batch = hidden_state.shape[0]
+        stoch_dim = self.transition.stoch_size * self.transition.stoch_classes
+
+        # Reconstruire stoch et deter depuis l'état latent
+        stoch_flat = hidden_state[:, :stoch_dim]
+        deter = hidden_state[:, stoch_dim:]
+
+        # Reconstruire la variable stochastique
+        stoch = stoch_flat.reshape(
+            batch, self.transition.stoch_size, self.transition.stoch_classes
+        )
+
+        # Effectuer la transition sans embedding
+        post, prior, deter_next, _ = self.transition(
+            prev_stoch=stoch,
+            prev_action=action,
+        )
+
+        # Construire le prochain état latent
+        next_hidden = torch.cat([
+            post.reshape(batch, -1), deter_next
+        ], dim=-1)
+
+        # Prédire la récompense
+        reward = self.predict_reward(post, deter_next)
+
+        # Policy et valeur factices (seront raffinées par l'actor-critic)
+        policy_logits = torch.zeros(batch, 5, device=hidden_state.device)
+        value = torch.zeros(batch, 1, device=hidden_state.device)
+
+        return next_hidden, reward, policy_logits, value
+
     def imagine(
         self,
         initial_stoch: torch.Tensor,
