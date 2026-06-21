@@ -1,0 +1,24 @@
+{
+  "_comment": "Markdown link check config — ignore common false positives",
+  "ignorePatterns": [
+    {
+      "pattern": "^http://localhost"
+    },
+    {
+      "pattern": "^https://arxiv.org"
+    },
+    {
+      "pattern": "^https://github.com/JohnNuwan"
+    }
+  ],
+  "replacementPatterns": [
+    {
+      "pattern": "^/",
+      "replacement": "https://github.com/JohnNuwan/Octopus/blob/main/"
+    }
+  ],
+  "timeout": "10s",
+  "retryOn429": true,
+  "retryCount": 3,
+  "aliveStatusCodes": [200, 206]
+}

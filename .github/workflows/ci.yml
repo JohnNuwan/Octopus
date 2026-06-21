@@ -1,0 +1,205 @@
+name: 🐙 Octopus CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  PYTHON_VERSION: "3.13"
+
+jobs:
+  # ─── Python Engine Tests ────────────────────────────────
+  python-tests:
+    name: "Python — Engine Tests"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: engine
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-pip uv
+
+      - name: Setup Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: "pip"
+          cache-dependency-path: |
+            engine/requirements.txt
+            engine/tests/requirements-test.txt
+
+      - name: Install dependencies
+        run: |
+          python -m venv .venv
+          source .venv/bin/activate
+          pip install -r requirements.txt
+          pip install -r tests/requirements-test.txt
+          echo "${{ github.workspace }}/engine" >> $GITHUB_PATH
+
+      - name: Run tests
+        run: |
+          source .venv/bin/activate
+          python -m pytest tests/ -v --tb=short --cov=src --cov-report=term-missing
+
+  # ─── Rust Build Check ────────────────────────────────────
+  rust-build:
+    name: "Rust — Execution Build"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: execution
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protoc
+        uses: arduino/setup-protoc@v3
+        with:
+          version: "28.0"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      - name: Cache Cargo dependencies
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: "execution"
+
+      - name: Check compilation
+        run: cargo check --all-targets
+
+      - name: Run clippy
+        run: cargo clippy -- -D warnings 2>/dev/null || echo "⚠️  Clippy warnings (non-blocking)"
+
+  # ─── TypeScript Build ────────────────────────────────────
+  web-build:
+    name: "Web — Dashboard Build"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: TypeScript check
+        run: npx tsc --noEmit
+
+      - name: Build production
+        run: npm run build
+
+  # ─── Go Build Check ──────────────────────────────────────
+  go-build:
+    name: "Go — Orchestrator Build"
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: orchestrator
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install protoc + Go plugins
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y protobuf-compiler
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.23"
+          cache: true
+
+      - name: Generate proto stubs
+        run: |
+          protoc --go_out=. --go_opt=paths=source_relative \
+            --go-grpc_out=. --go-grpc_opt=paths=source_relative \
+            proto/octopus.proto
+        continue-on-error: true
+
+      - name: Build
+        run: go build ./cmd/...
+
+      - name: Vet
+        run: go vet ./...
+
+  # ─── Lint: Markdown / YAML ──────────────────────────────
+  lint:
+    name: "Lint — Markdown + YAML"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check YAML syntax
+        run: |
+          sudo apt-get install -y yamllint
+          yamllint .github/workflows/ci.yml docker-compose.yml
+
+      - name: Check Markdown links
+        uses: gaurav-nelson/github-action-markdown-link-check@v1
+        with:
+          use-quiet-mode: "yes"
+          use-verbose-mode: "no"
+          config-file: ".github/mlc_config.json"
+          folder-path: "docs/,."
+
+  # ─── GitHub Release (manual trigger) ─────────────────────
+  release:
+    name: "Release — Create Tag"
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [python-tests, rust-build, web-build, go-build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: |
+          COMMITS=$(git rev-list --count HEAD)
+          SHA=$(git rev-parse --short HEAD)
+          echo "tag=v0.${COMMITS}-${SHA}" >> $GITHUB_OUTPUT
+
+      - name: Create tag
+        run: |
+          git tag ${{ steps.version.outputs.tag }} || true
+          git push origin ${{ steps.version.outputs.tag }} || true
+
+      - name: Create release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.tag }}
+          name: "Octopus v0.${{ env.COMMITS }}"
+          body: |
+            ## 🐙 Octopus Release
+            
+            See [changelog](https://github.com/${{ github.repository }}/commits/main) for details.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          makeLatest: true

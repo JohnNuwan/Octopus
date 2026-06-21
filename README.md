@@ -8,6 +8,7 @@
 [![Go](https://img.shields.io/badge/Go-1.23-blue?logo=go)](https://go.dev)
 [![Julia](https://img.shields.io/badge/Julia-1.11-purple?logo=julia)](https://julialang.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.5-blue?logo=typescript)](https://typescriptlang.org)
+[![CI](https://github.com/JohnNuwan/Octopus/actions/workflows/ci.yml/badge.svg)](https://github.com/JohnNuwan/Octopus/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow)](LICENSE)
 
 ---
