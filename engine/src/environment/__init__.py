@@ -14,7 +14,14 @@ References:
 import numpy as np
 import pandas as pd
 from typing import Tuple, Dict, Optional, List, Any
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+
+# Import conditionnel du module macro
+try:
+    from macro.src.macro_features import MacroFeatureEngine
+    MACRO_AVAILABLE = True
+except ImportError:
+    MACRO_AVAILABLE = False
 
 
 @dataclass
@@ -245,7 +252,8 @@ class OctopusTradingEnv:
         lookback: int = 96,
         initial_capital: float = 10000.0,
         max_position: float = 0.5,
-        fee: float = 0.0001
+        fee: float = 0.0001,
+        macro_feature_engine: Optional[Any] = None,
     ) -> None:
         """Initialise l'environnement de trading.
         
@@ -255,12 +263,15 @@ class OctopusTradingEnv:
             initial_capital: Capital initial.
             max_position: Taille de position maximale en lots.
             fee: Frais de transaction (0.01%).
+            macro_feature_engine: Moteur de features macro (optionnel).
         """
         self.df = df
         self.lookback = lookback
         self.max_position = max_position
         self.fee = fee
         self.action_dim = 5
+        self.macro_engine = macro_feature_engine
+        self.macro_features_history: List[np.ndarray] = []
         
         # Composants
         self.ftmo = FTMOEnforcer(initial_capital)
@@ -276,20 +287,32 @@ class OctopusTradingEnv:
     def _get_features(self, idx: int) -> np.ndarray:
         """Extrait les features à un pas de temps donné.
         
+        5 features techniques + 15 features macro (si disponibles) = 20 features.
+        
         Args:
             idx: Index dans le DataFrame.
             
         Returns:
-            Vecteur de features.
+            Vecteur de 20 features.
         """
         row = self.df.iloc[idx]
-        return np.array([
+        
+        # 5 features techniques
+        tech_features = np.array([
             row.get('Close', 0) / row.get('Open', 1) - 1,  # return
             (row.get('High', 0) - row.get('Low', 0)) / row.get('Close', 1e-8),  # spread
             float(idx % 96) / 96.0,  # position dans la journée
             1.0 if 8 <= idx % 24 < 17 else 0.0,  # session London
             1.0 if 13 <= idx % 24 < 22 else 0.0,  # session NY
         ], dtype=np.float32)
+        
+        # 15 features macro (si moteur disponible)
+        if self.macro_engine is not None:
+            macro_features = self.macro_engine.get_features_vector()
+            self.macro_features_history.append(macro_features.copy())
+            return np.concatenate([tech_features, macro_features])
+        
+        return tech_features
     
     def reset(self) -> np.ndarray:
         """Réinitialise l'environnement.
@@ -307,6 +330,7 @@ class OctopusTradingEnv:
         
         self.ftmo = FTMOEnforcer(self.ftmo.initial_capital)
         self.slbe.reset()
+        self.macro_features_history = []
         
         return self._get_observation()
     

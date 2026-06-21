@@ -150,7 +150,7 @@ class MuZeroConfig:
 
     # Espaces
     observation_shape: Tuple[int, ...] = (20, 96)
-    """(nb_features, sequence_length) — features × lookback."""
+    """(20 features, 96 lookback) — 5 techniques + 15 macro-économiques."""
     
     action_space_size: int = 5
     """Actions : 0=Hold, 1=Buy, 2=Sell, 3=Split, 4=Close."""
