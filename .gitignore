@@ -30,6 +30,8 @@ tensorboard/
 wandb/
 mlruns/
 orchestrator/orchestrator
+orchestrator/go.sum
+orchestrator/*.pb.go
 *.local
 *.secret
 *.key
