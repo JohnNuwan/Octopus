@@ -124,5 +124,7 @@ Le dashboard web se connecte à `ws://orchestrator:8080/ws` et reçoit :
 | Port | Service | Protocole | Usage |
 |------|---------|-----------|-------|
 | 9091 | Orchestrator | gRPC | Communication interne |
+| 9092 | Macro | gRPC | Données macro-économiques |
+| 9093 | Agent | HTTP | Dashboard agents |
 | 8080 | Orchestrator | HTTP/WS | Health check + WebSocket |
 | 3000 | Web | HTTP | Dashboard React |

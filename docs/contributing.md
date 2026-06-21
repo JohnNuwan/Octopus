@@ -5,11 +5,14 @@
 ```
 Octopus/
 ├── engine/            Python (PyTorch) — cœur RL
+├── macro/             Python — calendrier, sentiment, CB
 ├── execution/         Rust — exécution latence critique
 ├── orchestrator/      Go — routage gRPC central
 ├── quant/             Julia — calculs quantitatifs
 ├── invest/            Python — investissement long terme
+├── agent/             Python — agents intelligents + dashboard
 ├── web/               TypeScript/React — dashboard
+├── hermes-config/     Skills/cron pour Hermes Agent
 └── docs/              Documentation
 ```
 

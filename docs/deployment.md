@@ -51,16 +51,25 @@ INVEST_STRATEGY=core_satellite
 MONTHLY_BUDGET=500
 ```
 
+### 🐍 Agent Manager
+```bash
+docker compose up -d agent
+# Dashboard : http://localhost:9093
+# API : curl http://localhost:9093/api/agents
+```
+
 ## Services Docker
 
 | Service | Build | Ports | Dépend de |
 |---------|-------|-------|-----------|
 | orchestrator | Go | 9091, 8080 | — |
 | engine | Python | — | orchestrator |
+| macro | Python | 9092 | orchestrator |
 | execution | Rust | — | orchestrator |
 | quant | Julia | — | orchestrator |
 | invest | Python | — | orchestrator |
 | web | TypeScript | 3000 | orchestrator |
+| agent | Python | 9093 | — |
 
 ## GPU passthrough
 

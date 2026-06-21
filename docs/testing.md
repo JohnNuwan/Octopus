@@ -1,6 +1,6 @@
 # Tests Octopus
 
-> **77 tests unitaires** — lancés via pytest.
+> **130 tests unitaires** — lancés via pytest.
 
 ## Exécuter les tests
 
@@ -25,6 +25,8 @@ python -m pytest tests/ -v -s
 ```
 
 ## Modules testés
+
+### engine/tests/ — 77 tests
 
 ### test_environment.py (15 tests)
 
@@ -102,7 +104,7 @@ python -m pytest tests/ -v -s
 | `ReplayBuffer` | Tampon de rejeu |
 | `test_capacity` | FIFO overflow |
 
-### test_trader.py (5 tests)
+### test_live_trader.py (5 tests)
 
 | Test | Description |
 |------|-------------|
@@ -110,6 +112,43 @@ python -m pytest tests/ -v -s
 | `test_step_synthetic` | Action valide |
 | `test_cooldown` | Pas de trade en cooldown |
 | `test_kick_mechanism` | Force action non-Hold |
+
+---
+
+### macro/tests/ — 27 tests
+
+| Test | Description |
+|------|-------------|
+| `TestRuleBasedSentiment` | Analyseur lexical |
+| `test_bullish_text` | Texte positif → score > 0 |
+| `test_bearish_text` | Texte négatif → score < 0 |
+| `TestEconomicCalendar` | Calendrier économique |
+| `test_is_gold_event` | Détection événements or |
+| `test_compute_volatility_score` | Score de volatilité |
+| `TestCentralBankMonitor` | Banques centrales |
+| `test_real_rate_spread` | Spread Fed - BCE |
+| `test_gold_environment_score` | Score environnement or |
+| `TestMacroFeatures` | 15 features normalisées |
+| `test_get_features_vector` | Sortie (15,) float32 |
+| `test_numeric_features_in_range` | Toutes les features dans [0-1] |
+
+---
+
+### agent/tests/ — 26 tests
+
+| Test | Description |
+|------|-------------|
+| `TestAgentManager` | Orchestrateur central |
+| `test_register_agent` | Enregistrement d'agents |
+| `test_run_agent` | Exécution mock |
+| `test_get_status` | État de tous les agents |
+| `TestTrainingAgent` | Entraînement RL |
+| `test_check_gpu` | Détection GPU |
+| `test_mock_training` | Simulation entraînement |
+| `TestResearchAgent` | Recherche arXiv |
+| `test_search_topics` | Recherche par mots-clés |
+| `TestMacroAgent` | Macro analyse |
+| `test_alerts` | Seuils d'alerte |
 
 ## Ajouter un nouveau test
 

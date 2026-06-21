@@ -51,10 +51,12 @@ Octopus est une architecture multi-agent pour le trading algorithmique XAUUSD, o
 |---------|---------|-------------|------|
 | **Orchestrator** | Go | gRPC, WebSocket | Cerveau central, routage, monitoring |
 | **Engine** | Python | PyTorch, JAX, MuZero | RL, encodage JEPA, World Model, décisions |
+| **Macro** | Python | investpy, FinBERT, RSS | Calendrier, sentiment, taux CB |
 | **Execution** | Rust | Tonic, MT5 API | Ordres latence critique, IOC/FOK |
 | **Quant** | Julia | LinearAlgebra | Kelly, VaR, optimisation portefeuille |
 | **Invest** | Python | Trade Republic API | Investissement long terme, DCA |
 | **Web** | TypeScript | React, Recharts | Dashboard monitoring temps réel |
+| **Agent** | Python | FastAPI, asyncio | Agents intelligents (training, research, etc.) |
 
 ## Flux de données
 

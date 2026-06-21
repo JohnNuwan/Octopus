@@ -8,12 +8,14 @@
 
 | Document | Description |
 |----------|-------------|
-| [Architecture](architecture.md) | Vue d'ensemble des 6 services, flux de données, communication |
+| [Architecture](architecture.md) | Vue d'ensemble des 8 services, flux de données, communication |
 | [Engine](engine.md) | Moteur Python : JEPA, World Model, MuZero, Actor-Critic, MCTS |
+| [Macro](macro.md) | Calendrier économique, sentiment news, banques centrales |
 | [API Reference](api.md) | gRPC Protocol, WebSocket, variables d'environnement |
 | [Déploiement](deployment.md) | Docker Compose, GPU, configuration, monitoring |
-| [Tests](testing.md) | 77 tests unitaires, coverage, ajout de tests |
+| [Tests](testing.md) | 130 tests unitaires, coverage, ajout de tests |
 | [Contribution](contributing.md) | Structure du repo, workflow, style de code |
+| [Hermes Config](../hermes-config/README.md) | Pipeline productif via Hermes Agent |
 
 ---
 
