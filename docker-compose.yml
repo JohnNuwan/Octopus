@@ -125,12 +125,30 @@ services:
     volumes:
       - invest_data:/data
 
+# ─── Macro-économie (Python) ──────────────────────────
+  macro:
+    <<: *defaults
+    build:
+      context: ./macro
+      dockerfile: Dockerfile
+    depends_on:
+      - orchestrator
+    ports:
+      - "9092:9092"    # gRPC
+    environment:
+      - ORCHESTRATOR_HOST=orchestrator
+      - ORCHESTRATOR_PORT=9091
+      - USE_FINBERT=${USE_FINBERT:-false}
+    volumes:
+      - macro_data:/data
+
 volumes:
   orchestrator_data:
   engine_weights:
   engine_results:
   quant_data:
   invest_data:
+  macro_data:
 
 networks:
   octopus-net:
